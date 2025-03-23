@@ -134,38 +134,19 @@ function getTransformIndex(from: string | number, to: string | number): {fromInd
         to = Number(to);
     }
 
-
-    let transformInfo: {from: number , to: number} = {
-        from: 0,
-        to: 0
+    let transformInfo: {from: number | undefined, to: number | undefined} = {
+        from: undefined,
+        to: undefined
     }
 
-    const firstEnvelopFound: number = allEnvelopes.findIndex((envelope: Envelope) => {
-        return envelope[searchType] === from || envelope[searchType] === to;
-    })
+    for(let i = 0; i < allEnvelopes.length; i++) {
+        if(allEnvelopes[i][searchType] === from){
+            transformInfo.from = i
+        }
 
-
-    if(firstEnvelopFound === -1){
-        return {fromIndex: undefined, toIndex: undefined};
-    }
-
-    if(allEnvelopes[firstEnvelopFound][searchType] === from){
-        const secondEnvelopFound = allEnvelopes
-                                            .slice(firstEnvelopFound)
-                                            .findIndex(envelope => envelope[searchType] === to);
-
-        transformInfo = {from: firstEnvelopFound, to: secondEnvelopFound !== -1 ? secondEnvelopFound + firstEnvelopFound : -1};
-
-    }else{
-        const secondEnvelopFound = allEnvelopes
-                                            .slice(firstEnvelopFound)
-                                            .findIndex(envelope => envelope[searchType] === from);
-
-        transformInfo = {from: secondEnvelopFound !== -1 ? secondEnvelopFound + firstEnvelopFound : -1 , to: firstEnvelopFound};
-    }
-
-    if(transformInfo.from === -1 || transformInfo.to === -1){
-        return {fromIndex: undefined, toIndex: undefined};
+        if(allEnvelopes[i][searchType] === to){
+            transformInfo.to = i
+        }
     }
 
     return {fromIndex : transformInfo.from, toIndex: transformInfo.to}
