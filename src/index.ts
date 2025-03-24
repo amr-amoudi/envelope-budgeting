@@ -1,5 +1,6 @@
 import express, {NextFunction} from "express";
 import {Envelope} from "../types/envelope";
+
 const bodyParser = require("body-parser");
 const app: express.Express = express();
 const PORT: number = 3000;
@@ -7,13 +8,12 @@ const PORT: number = 3000;
 
 /**
  * to do:
- *  1: adding comments
  *  2: adding modularity
  *  3: front-end
  * **/
 
 
-// adding req."idParam" to Express's Request type
+// Extend Express Request type to include `idParam`
 declare global {
     namespace Express {
         interface Request {
@@ -26,26 +26,24 @@ declare global {
     }
 }
 
-
 app.use(bodyParser.json());
 
+// this will hold all envelops
 let allEnvelopes: Envelope[] = [
 
 ]
 
-function addToNewEnvelope(body: Envelope ) {
-    allEnvelopes.push(body);
-}
-
-function findEnvelop(id: number): { envelope: Envelope, index: number } | undefined {
+// find envelope by id (number)
+function findEnvelope(id: number): { envelope: Envelope, index: number } | undefined {
     const foundEnvelope: number = allEnvelopes.findIndex(envelope => envelope.id === id);
 
-    console.log(foundEnvelope);
-
+    // if envelope was not found it will return undefined
     if(foundEnvelope === -1) {
         return undefined;
     }
 
+    // else will return index which is the index of the envelope
+    // and envelope which is the envelope object
     return {index: foundEnvelope, envelope: allEnvelopes[foundEnvelope]}
 }
 
@@ -59,8 +57,10 @@ app.param("id", (req: express.Request, res: express.Response, next: express.Next
         return next(error)
     }
 
-    const result = findEnvelop(convertIdToNumber)
+    // gets the envelope using findEnvelope
+    const result: {envelope: Envelope, index: number} | undefined = findEnvelope(convertIdToNumber)
 
+    // if findEnvelope returns undefined it will throw an error
     if(!result){
         const error = new Error(`${id} not found`);
         (error as any).status = 404;
@@ -72,124 +72,126 @@ app.param("id", (req: express.Request, res: express.Response, next: express.Next
     next()
 })
 
-function refactorUpdateEnvelopeBody(body: Envelope): {budget: number, name: string, spent: number} {
-    let newBody = {
-
-    };
-
-    for (const key in body) {
-        if(key === "budget" || key === "name" || key === "spent"){
-            newBody = {
-                ...newBody,
-                [key]: body[key]
-            }
-        }
-    }
-
-    return newBody as { budget: number; name: string; spent: number };
-}
-
+// get envelope by specific id
 app.get("/api/envelope/:id", (req: express.Request, res: express.Response) => {
     const {envelopeObj} = req.idParam;
 
     res.status(200).send(envelopeObj);
-
 })
 
-app.put("/api/envelope/:id", (req: express.Request, res: express.Response, next: NextFunction) => {
-    const {id ,envelopeObj, index} = req.idParam;
-    const body = refactorUpdateEnvelopeBody(req.body);
+function updateEnvelope(body: Partial<Envelope>, envelope: Envelope): Envelope {
+    return {
+        id: envelope.id,
+        name: body.name || envelope.name,
+        budget: body.budget || envelope.budget,
+        spent: body.spent || envelope.spent
+    };
+}
 
+// update envelopes
+app.put("/api/envelope/:id", (req: express.Request, res: express.Response, next: NextFunction) => {
+    const {envelopeObj, index} = req.idParam;
+
+    const body: Envelope = updateEnvelope(req.body, envelopeObj);
+
+    // check if user over spend their envelope
     if(body.spent > body.budget || body.spent > envelopeObj.budget){
         const error = new Error(`you over spent`);
         (error as any).status = 400;
         return next(error)
     }
 
-    allEnvelopes[index] = {...envelopeObj, ...body ,id: id};
+    allEnvelopes[index] = {...body};
 
     res.status(201).send(allEnvelopes[index]);
 })
 
 function deleteEnvelope(envelopeId: number) {
-
-    const newAllEnvelops: Envelope[] = allEnvelopes.filter((envelope: Envelope) => envelope.id !== envelopeId);
-
-    allEnvelopes = newAllEnvelops
+    allEnvelopes = allEnvelopes.filter((envelope: Envelope) => envelope.id !== envelopeId)
 }
 
+// delete envelope
 app.delete("/api/envelope/:id", (req: express.Request, res: express.Response) => {
     const {id} = req.idParam;
+
     deleteEnvelope(id)
 
     res.status(204).send({message: "Envelope deleted successfully."});
 })
 
-function getTransformIndex(from: string | number, to: string | number): {fromIndex : number | undefined, toIndex: number | undefined} {
-    let searchType: keyof Envelope= "name"
+// Get indexes for transaction between envelopes
+function getTransferEnvelopesIndexes(from: string | number, to: string | number): {fromIndex : number | undefined, toIndex: number | undefined} {
+    let searchType: keyof Envelope = isNaN(Number(to)) ? "name" : "id";
 
-    if(!isNaN(Number(to))){
-        searchType = "id"
+    if(searchType === "id"){
         from = Number(from);
         to = Number(to);
     }
 
-    let transformInfo: {from: number | undefined, to: number | undefined} = {
-        from: undefined,
-        to: undefined
+    let transformInfo: {fromIndex: number | undefined, toIndex: number | undefined} = {
+        fromIndex: undefined,
+        toIndex: undefined
     }
 
     for(let i = 0; i < allEnvelopes.length; i++) {
         if(allEnvelopes[i][searchType] === from){
-            transformInfo.from = i
+            transformInfo.fromIndex = i
         }
 
         if(allEnvelopes[i][searchType] === to){
-            transformInfo.to = i
+            transformInfo.toIndex = i
         }
     }
 
-    return {fromIndex : transformInfo.from, toIndex: transformInfo.to}
+    // warning: one of the indexes could be "undefined" if it was not found
+    return transformInfo;
 }
 
+// complite transaction
 function compliteTransaction(fromIndex: number, toIndex: number, value: number,next: express.NextFunction) {
+    // if the user doesn't have enough money on the "from" object
     if(allEnvelopes[fromIndex].budget - allEnvelopes[fromIndex].spent - value < 0){
         const error = new Error(`Invalid transaction: You can’t transform more than what you don’t have.`);
         (error as any).status = 400;
         return next(error)
     }
 
-
+    // complete transaction
     allEnvelopes[fromIndex].budget = allEnvelopes[fromIndex].budget - value;
     allEnvelopes[toIndex].budget = allEnvelopes[toIndex].budget + value;
     next()
 }
 
+// Transfer money between envelopes
 app.post("/api/envelope/:from/:to", (req: express.Request, res: express.Response, next: express.NextFunction) => {
     const {from, to} = req.params;
+    // check if "to" and "from" don't have the same data type
     if ((!isNaN(Number(to)) !== !isNaN(Number(from)))) {
         const error = new Error(`'from' and 'to' should be the same value type`);
         (error as any).status = 400;
         return next(error);
     }
 
-    const {fromIndex, toIndex} = getTransformIndex(from, to);
+    // get "to" and "from" indexes
+    const {fromIndex, toIndex} = getTransferEnvelopesIndexes(from, to);
+    // get the amount of money that is ganna be transferred
     const {value} = req.headers;
 
-    if(isNaN(Number(value))){
+    if(!Number(value)){
         const error = new Error(`value must be a number`);
         (error as any).status = 400;
         return next(error)
     }
-
-    if(fromIndex === undefined || toIndex === undefined){
-        const error = new Error(`can't find envelope ${fromIndex === undefined ? from : to}`);
+    // if the user didn't pass a value throw an error
+    if(value === undefined || value === null){
+        const error = new Error("enter value to transform");
         (error as any).status = 400;
         return next(error)
     }
 
-    if(value === undefined || value === null){
-        const error = new Error("enter value to transform");
+    // could be undefined if "getTransferEnvelopesIndexes" didn't find the envelope
+    if(fromIndex === undefined || toIndex === undefined){
+        const error = new Error(`can't find envelope ${fromIndex === undefined ? from : to}`);
         (error as any).status = 400;
         return next(error)
     }
@@ -199,18 +201,52 @@ app.post("/api/envelope/:from/:to", (req: express.Request, res: express.Response
     res.status(200).send({from: allEnvelopes[fromIndex], to: allEnvelopes[toIndex]});
 })
 
-app.post("/api/envelope", (req: express.Request, res: express.Response) => {
+function addToNewEnvelope(body: Envelope ) {
+    allEnvelopes.push(body);
+}
+
+// Sanitize user input by removing unnecessary properties
+function refactorBody(body: Envelope) {
+    let returnedBody: Envelope = {
+        id: Number(body.id),
+        name: body.name,
+        budget: Number(body.budget),
+        spent: Number(body.spent),
+    };
+
+    // returns refactored object
+    return returnedBody;
+}
+
+// create new envelope
+app.post("/api/envelope", (req: express.Request, res: express.Response, next: NextFunction) => {
     const reqBody: Envelope = req.body;
 
-    addToNewEnvelope(reqBody);
+    if(reqBody.id === undefined || reqBody.name === undefined || reqBody.budget === undefined || reqBody.spent === undefined) {
+        const error = new Error(`body should have all required properties [id, name, budget, spent].`);
+        (error as any).status = 400;
+        return next(error)
+    }
 
-    res.status(201).send({ new_envelop:reqBody, message:"successfully added" });
+    const refactoredBody: Envelope = refactorBody(reqBody)
+
+    if(isNaN(refactoredBody.id) || isNaN(refactoredBody.spent) || isNaN(reqBody.budget)) {
+        const error = new Error(`'id', 'budget' and 'spend' should be numbers`);
+        (error as any).status = 400;
+        return next(error)
+    }
+
+    addToNewEnvelope(refactoredBody);
+
+    res.status(201).send({ new_envelop:refactoredBody, message:"successfully added" });
 })
 
+// get all envelopes
 app.get("/api/envelope", (req: express.Request, res: express.Response, next: express.NextFunction) => {
     res.send(allEnvelopes);
 })
 
+// error handling middleware
 app.use((err: any , req: express.Request, res: express.Response, next: express.NextFunction) => {
     const status = err.status || 500;
     res.status(status).send({error:err.message});
@@ -218,5 +254,3 @@ app.use((err: any , req: express.Request, res: express.Response, next: express.N
 
 
 app.listen(PORT, () => console.log(`Listening on port ${PORT}`));
-
-
