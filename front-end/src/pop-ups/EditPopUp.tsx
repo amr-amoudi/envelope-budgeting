@@ -19,7 +19,7 @@ export default function EditPopUp({id, name, budget, spent, popUp}: EditPopUpTyp
     });
 
     async function handleSave() {
-        await fetchData(import.meta.env.API_URL+id || `http://localhost:3000/api/envelope/${id}`, {
+        await fetchData(import.meta.env.VITE_API_URL + id || `http://localhost:3000/api/envelope/${id}`, {
             method: "PUT",
             body: JSON.stringify(info)
         })

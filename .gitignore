@@ -18,6 +18,7 @@ back-end/.idea
 /front-end/yarn-error.log*
 /front-end/pnpm-debug.log*
 /front-end/lerna-debug.log*
+/front-end/.env
 
 /front-end/node_modules
 /front-end/dist

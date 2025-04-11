@@ -16,7 +16,7 @@ export default function App() {
 
             const fetchAllEnvelopes = async () => {
                 if(!Array.isArray(cards) || cards.length === 0){
-                    const data: Envelope[] = await fetchData<Envelope[]>("http://localhost:3000/api/envelope/")
+                    const data: Envelope[] = await fetchData<Envelope[]>(import.meta.env.VITE_API_URL || "http://localhost:3000/api/envelope");
 
                     setCards(data)
                 }

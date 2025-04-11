@@ -24,7 +24,7 @@ export default function CreateEnvelopePopUp({cards, setCards, displayCreate, set
     }, [inputs]);
 
     async function handleCreate() {
-        await fetchData(import.meta.env.API_URL || "http://localhost:3000/api/envelope/", {
+        await fetchData(import.meta.env.VITE_API_URL || "http://localhost:3000/api/envelope/", {
             method: "POST",
             body: JSON.stringify(inputs)
         }).then((res: any) => {

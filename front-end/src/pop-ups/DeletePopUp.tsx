@@ -8,7 +8,7 @@ export default function DeletePopUp({id} : Envelope) {
     const setEnvelopes  = useContext(SetEnvelopes)
 
     async function handleYesClick() {
-        await fetchData(import.meta.env.API_URL + id || `http://localhost:3000/api/envelope/${id}`, {
+        await fetchData(import.meta.env.VITE_API_URL + id || `http://localhost:3000/api/envelope/${id}`, {
             method: "DELETE",
             headers: {
                 'Content-Type': 'application/json'
