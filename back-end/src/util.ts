@@ -13,7 +13,7 @@ function refactorBody(body: Envelope): Envelope {
 }
 
 function addToNewEnvelope(body: Envelope, envelopesArray: Envelope[]) {
-    envelopesArray.push(body);
+    envelopesArray.unshift(body);
 }
 
 // complite transaction
@@ -68,8 +68,8 @@ function updateEnvelope(body: Partial<Envelope>, envelope: Envelope): Envelope {
     return {
         id: envelope.id,
         name: body.name || envelope.name,
-        budget: body.budget || envelope.budget,
-        spent: body.spent || envelope.spent
+        budget: Number(body.budget) || envelope.budget,
+        spent: Number(body.spent)|| envelope.spent
     };
 }
 

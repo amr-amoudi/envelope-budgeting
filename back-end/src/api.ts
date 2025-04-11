@@ -9,6 +9,7 @@ import {
         updateEnvelope,
         findEnvelope
 } from "./util";
+import { customAlphabet } from "nanoid";
 const api: express.Router = express.Router();
 
 
@@ -53,6 +54,12 @@ api.put("/envelope/:id", (req: express.Request, res: express.Response, next: exp
     const {envelopeObj, index} = req.idParam;
 
     const body: Envelope = updateEnvelope(req.body, envelopeObj);
+
+    if ((isNaN(Number(req.body.spent)) || isNaN(Number(req.body.budget)))) {
+        const error = new Error(`spent and budget should be numbers`);
+        (error as any).status = 400;
+        return next(error);
+    }
 
     // check if user over spend their envelope
     if(body.spent > body.budget || body.spent > envelopeObj.budget){
@@ -116,9 +123,10 @@ api.post("/envelope/:from/:to", (req: express.Request, res: express.Response, ne
 
 // create new envelope
 api.post("/envelope", (req: express.Request, res: express.Response, next: express.NextFunction) => {
-    const reqBody: Envelope = req.body;
+    const id = customAlphabet("0123456789", 10)
+    const reqBody: Envelope = {...req.body, id: id()};
 
-    if(reqBody.id === undefined || reqBody.name === undefined || reqBody.budget === undefined || reqBody.spent === undefined) {
+    if(reqBody.name === undefined || reqBody.budget === undefined || reqBody.spent === undefined) {
         const error = new Error(`body should have all required properties [id, name, budget, spent].`);
         (error as any).status = 400;
         return next(error)
@@ -134,13 +142,13 @@ api.post("/envelope", (req: express.Request, res: express.Response, next: expres
 
     addToNewEnvelope(refactoredBody, allEnvelopes);
 
-    res.status(201).send({ new_envelop:refactoredBody, message:"successfully added" });
+    res.status(201).send({ new_envelope : refactoredBody, message : "successfully added" });
 })
 
 // get all envelopes
 api.get("/envelope", (_: express.Request, res: express.Response, next: express.NextFunction) => {
     if(allEnvelopes.length === 0){
-        const error = new Error("there is no envelopes");
+        const error = new Error("there are no envelopes");
         (error as any).status = 400;
         return next(error)
     }

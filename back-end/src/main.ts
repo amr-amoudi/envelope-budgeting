@@ -1,16 +1,11 @@
 import express from "express";
 import {Envelope} from "../types/envelope";
 import {api} from "./api";
+const cors = require("cors");
 import bodyParser from "body-parser";
 
 const app: express.Express = express();
-const PORT: number = 3000;
-
-
-/**
- * to do:
- *  3: front-end
- * **/
+const PORT: string | number = process.env.PORT || 3000;
 
 // Extend Express Request type to include `idParam`
 declare global {
@@ -24,6 +19,8 @@ declare global {
         }
     }
 }
+
+app.use(cors());
 
 app.use(bodyParser.json());
 
