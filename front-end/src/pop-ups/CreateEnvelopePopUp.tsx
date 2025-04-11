@@ -61,15 +61,13 @@ export default function CreateEnvelopePopUp({cards, setCards, displayCreate, set
     }
 
     function checkInputs(): boolean {
-        if(!inputs.budget || !inputs.spent || !inputs.name) {
-            return true;
-        }
 
-        if(isNaN(Number(inputs.budget)) || isNaN(Number(inputs.spent))){
-            return true;
-        }
-
-        if(Number(inputs.spent) > Number(inputs.budget)) {
+        if(
+            isNaN(Number(inputs.budget)) ||
+            isNaN(Number(inputs.spent)) ||
+            !inputs.name ||
+            Number(inputs.spent) > Number(inputs.budget)
+        ){
             return true;
         }
 
