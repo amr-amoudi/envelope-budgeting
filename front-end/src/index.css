@@ -29,8 +29,8 @@ body {
 }
 
 .create--envelope{
-  width: 500px;
-  height: 500px;
+  width: 440px;
+  height: 400px;
   background-color: rgba(137, 137, 137, 0.95);
   position: absolute;
   z-index: 40;
