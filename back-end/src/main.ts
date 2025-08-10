@@ -13,8 +13,6 @@ declare global {
         interface Request {
             idParam: {
                 id: number;
-                envelopeObj: Envelope;
-                index: number;
             }
         }
     }

@@ -1,17 +1,14 @@
 import express from "express";
-import {Envelope} from "../types/envelope";
 import {
-        refactorBody,
-        addToNewEnvelope,
-        compliteTransaction,
-        getTransferEnvelopesIndexes,
-        deleteEnvelope,
-        updateEnvelope,
-        findEnvelope
+    createEnvelope,
+    completeTransaction,
+    getTransferEnvelopesIndexes,
+    deleteEnvelope,
+    updateEnvelope,
+    getEnvelopeById, getAllEnvelopes
 } from "./util";
-import { customAlphabet } from "nanoid";
 const api: express.Router = express.Router();
-
+import type { Envelope, Err } from "../types/types";
 
 // this will hold all envelops
 let allEnvelopes: Envelope[] = [
@@ -27,59 +24,44 @@ api.param("id", (req: express.Request, _: express.Response, next: express.NextFu
         return next(error)
     }
 
-    // gets the envelope using findEnvelope
-    const result: {envelope: Envelope, index: number} | undefined = findEnvelope(convertIdToNumber, allEnvelopes)
-
-    // if findEnvelope returns undefined it will throw an error
-    if(!result){
-        const error = new Error(`${id} not found`);
-        (error as any).status = 404;
-        return next(error)
-    }
-
-    req.idParam = {id:convertIdToNumber, envelopeObj:result.envelope, index: result.index};
+    req.idParam = { id:convertIdToNumber };
 
     next()
 })
 
 // get envelope by specific id
-api.get("/envelope/:id", (req: express.Request, res: express.Response) => {
-    const {envelopeObj} = req.idParam;
-
-    res.status(200).send(envelopeObj);
+api.get("/envelope/:id", async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const { id } = req.idParam;
+    try {
+        const foundEnvelope = await getEnvelopeById(id);
+        res.status(200).send(foundEnvelope);
+    }catch (e) {
+        return next(e)
+    }
 })
 
 // update envelopes
-api.put("/envelope/:id", (req: express.Request, res: express.Response, next: express.NextFunction) => {
-    const {envelopeObj, index} = req.idParam;
+api.put("/envelope/:id", async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const { id } = req.idParam;
 
-    const body: Envelope = updateEnvelope(req.body, envelopeObj);
-
-    if ((isNaN(Number(req.body.spent)) || isNaN(Number(req.body.budget)))) {
-        const error = new Error(`spent and budget should be numbers`);
-        (error as any).status = 400;
-        return next(error);
+    try {
+        const newEnvelope: Envelope = await updateEnvelope(id, req.body);
+        res.status(201).send(newEnvelope);
+    }catch (e){
+        return next(e);
     }
-
-    // check if user over spend their envelope
-    if(body.spent > body.budget || body.spent > envelopeObj.budget){
-        const error = new Error(`you over spent`);
-        (error as any).status = 400;
-        return next(error)
-    }
-
-    allEnvelopes[index] = body;
-
-    res.status(201).send(allEnvelopes[index]);
 })
 
 // delete envelope
-api.delete("/envelope/:id", (req: express.Request, res: express.Response) => {
+api.delete("/envelope/:id", async (req: express.Request, res: express.Response) => {
     const {id} = req.idParam;
 
-    allEnvelopes = deleteEnvelope(id, allEnvelopes)
-
-    res.status(204).send({message: "Envelope deleted successfully."});
+    try {
+        await deleteEnvelope(id)
+        res.status(204).send({message: "Envelope deleted successfully."});
+    }catch (e) {
+        return res.status((e as any).status).send({error: (e as Error).message});
+    }
 })
 
 // Transfer money between envelopes
@@ -116,52 +98,40 @@ api.post("/envelope/:from/:to", (req: express.Request, res: express.Response, ne
         return next(error)
     }
 
-    compliteTransaction(fromIndex, toIndex, Number(value), allEnvelopes, next)
+    completeTransaction(fromIndex, toIndex, Number(value), allEnvelopes, next)
 
     res.status(200).send({from: allEnvelopes[fromIndex], to: allEnvelopes[toIndex]});
 })
 
 // create new envelope
-api.post("/envelope", (req: express.Request, res: express.Response, next: express.NextFunction) => {
-    const id = customAlphabet("0123456789", 10)
-    const reqBody: Envelope = {...req.body, id: id()};
-
-    if(reqBody.name === undefined || reqBody.budget === undefined || reqBody.spent === undefined) {
-        const error = new Error(`body should have all required properties [id, name, budget, spent].`);
-        (error as any).status = 400;
-        return next(error)
+api.post("/envelope", async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    try {
+        const result: Envelope = await createEnvelope(req.body);
+        res.status(201).send({ new_envelope : result, message : "successfully added" });
+    }catch (error) {
+        const err = new Error((error as Error).message);
+        (err as any).status = 500;
+        return next(err);
     }
-
-    const refactoredBody: Envelope = refactorBody(reqBody)
-
-    if(isNaN(refactoredBody.id) || isNaN(refactoredBody.spent) || isNaN(reqBody.budget)) {
-        const error = new Error(`'id', 'budget' and 'spend' should be numbers`);
-        (error as any).status = 400;
-        return next(error)
-    }
-
-    addToNewEnvelope(refactoredBody, allEnvelopes);
-
-    res.status(201).send({ new_envelope : refactoredBody, message : "successfully added" });
 })
 
 // get all envelopes
-api.get("/envelope", (_: express.Request, res: express.Response, next: express.NextFunction) => {
-    if(allEnvelopes.length === 0){
-        const error = new Error("there are no envelopes");
-        (error as any).status = 400;
-        return next(error)
+api.get("/envelope", async (_: express.Request, res: express.Response, next: express.NextFunction) => {
+    try{
+        const envelopes = await getAllEnvelopes()
+        res.send(envelopes);
+    }catch (e){
+        const error = new Error((e as Error).message);
+        (error as any).status = 500;
+        return next(error);
     }
-
-    res.send(allEnvelopes);
 })
 
 // error handling middleware
-api.use((err: any , _: express.Request, res: express.Response, __: express.NextFunction) => {
+api.use((err: Err , _: express.Request, res: express.Response, __: express.NextFunction) => {
     const status = err.status || 500;
+    console.log(err,status)
     res.status(status).send({error:err.message});
 })
-
-
 
 export {api};
