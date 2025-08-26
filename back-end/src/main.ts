@@ -1,7 +1,6 @@
 import express from "express";
-import {Envelope} from "../types/envelope";
 import {api} from "./api";
-const cors = require("cors");
+import cors from "cors";
 import bodyParser from "body-parser";
 
 const app: express.Express = express();
@@ -12,7 +11,8 @@ declare global {
     namespace Express {
         interface Request {
             idParam: {
-                id: number;
+                id?: number | undefined;
+                transaction_id?: number | undefined;
             }
         }
     }

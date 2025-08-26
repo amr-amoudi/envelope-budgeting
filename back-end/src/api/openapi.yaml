@@ -1,0 +1,453 @@
+openapi: 3.0.1
+info:
+  title: Envelope Budgeting API
+  description: |
+    A simple API for managing budgets using the envelope budgeting method.   Each envelope represents a category with a defined budget and tracked spending.
+  version: 2.0.0
+servers:
+- url: http://localhost:3000
+  description: Local development server
+tags:
+- name: Envelopes
+  description: Manage envelopes (budget categories).
+- name: Transactions
+  description: Manage transactions within envelopes.
+paths:
+  /api/envelope:
+    get:
+      tags:
+      - Envelopes
+      summary: Get all envelopes
+      description: Retrieve a list of all envelopes.
+      operationId: apiEnvelopeGET
+      responses:
+        "200":
+          description: List of envelopes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Envelope"
+                x-content-type: application/json
+        "500":
+          description: Server error
+      x-swagger-router-controller: Envelopes
+    post:
+      tags:
+      - Envelopes
+      summary: Create a new envelope
+      description: "Create an envelope with a name, budget, and initial spent value."
+      operationId: apiEnvelopePOST
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnvelopeInput"
+        required: true
+      responses:
+        "201":
+          description: Envelope created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Envelope"
+        "400":
+          description: Invalid input (e.g. spent greater than budget)
+      x-swagger-router-controller: Envelopes
+  /api/envelope/{id}:
+    get:
+      tags:
+      - Envelopes
+      summary: Get envelope by ID
+      description: Retrieve a specific envelope by its ID.
+      operationId: apiEnvelopeIdGET
+      parameters:
+      - name: id
+        in: path
+        description: ID of the envelope
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          example: 1
+      responses:
+        "200":
+          description: Envelope found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Envelope"
+        "400":
+          description: Invalid envelope ID
+        "404":
+          description: Envelope not found
+      x-swagger-router-controller: Envelopes
+    put:
+      tags:
+      - Envelopes
+      summary: Update envelope
+      description: "Update the name, budget, and spent values of an envelope."
+      operationId: apiEnvelopeIdPUT
+      parameters:
+      - name: id
+        in: path
+        description: ID of the envelope
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          example: 1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnvelopeInput"
+        required: true
+      responses:
+        "200":
+          description: Envelope updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Envelope"
+        "400":
+          description: Spent value cannot exceed budget
+        "404":
+          description: Envelope not found
+      x-swagger-router-controller: Envelopes
+    delete:
+      tags:
+      - Envelopes
+      summary: Delete envelope
+      description: Delete a specific envelope by ID.
+      operationId: apiEnvelopeIdDELETE
+      parameters:
+      - name: id
+        in: path
+        description: ID of the envelope
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          example: 1
+      responses:
+        "204":
+          description: Envelope deleted successfully
+        "400":
+          description: Invalid envelope ID
+        "404":
+          description: Envelope not found
+      x-swagger-router-controller: Envelopes
+  /api/envelope/{id}/transaction:
+    get:
+      tags:
+      - Transactions
+      summary: Get all transactions for an envelope
+      description: Retrieve all transactions belonging to a specific envelope.
+      operationId: apiEnvelopeIdTransactionGET
+      parameters:
+      - name: id
+        in: path
+        description: ID of the envelope
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          example: 1
+      responses:
+        "200":
+          description: List of transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Transaction"
+                x-content-type: application/json
+        "404":
+          description: Envelope not found
+      x-swagger-router-controller: Transactions
+    post:
+      tags:
+      - Transactions
+      summary: Create a new transaction
+      description: Create a new transaction and update the envelope’s spent value.
+      operationId: apiEnvelopeIdTransactionPOST
+      parameters:
+      - name: id
+        in: path
+        description: ID of the envelope
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          example: 1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransactionInput"
+        required: true
+      responses:
+        "201":
+          description: Transaction created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transaction"
+        "400":
+          description: Invalid input (e.g. amount is negative)
+        "404":
+          description: Envelope not found
+      x-swagger-router-controller: Transactions
+    delete:
+      tags:
+      - Transactions
+      summary: Delete all transactions for an envelope
+      operationId: apiEnvelopeIdTransactionDELETE
+      parameters:
+      - name: id
+        in: path
+        description: ID of the envelope
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          example: 1
+      responses:
+        "204":
+          description: All transactions deleted successfully
+        "404":
+          description: Envelope not found
+      x-swagger-router-controller: Transactions
+  /api/envelope/{id}/transaction/{transaction_id}:
+    get:
+      tags:
+      - Transactions
+      summary: Get transaction by ID
+      operationId: apiEnvelopeIdTransactionTransaction_idGET
+      parameters:
+      - name: id
+        in: path
+        description: ID of the envelope
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          example: 1
+      - name: transaction_id
+        in: path
+        description: ID of the transaction
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          example: 1
+      responses:
+        "200":
+          description: Transaction found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transaction"
+        "400":
+          description: Invalid envelope or transaction ID
+        "404":
+          description: Transaction or envelope not found
+      x-swagger-router-controller: Transactions
+    put:
+      tags:
+      - Transactions
+      summary: Update transaction
+      description: Update transaction details such as name or amount.
+      operationId: apiEnvelopeIdTransactionTransaction_idPUT
+      parameters:
+      - name: id
+        in: path
+        description: ID of the envelope
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          example: 1
+      - name: transaction_id
+        in: path
+        description: ID of the transaction
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          example: 1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransactionInput"
+        required: true
+      responses:
+        "200":
+          description: Transaction updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transaction"
+        "400":
+          description: Invalid input (e.g. negative amount)
+        "404":
+          description: Transaction or envelope not found
+      x-swagger-router-controller: Transactions
+    delete:
+      tags:
+      - Transactions
+      summary: Delete transaction by ID
+      operationId: apiEnvelopeIdTransactionTransaction_idDELETE
+      parameters:
+      - name: id
+        in: path
+        description: ID of the envelope
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          example: 1
+      - name: transaction_id
+        in: path
+        description: ID of the transaction
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          example: 1
+      responses:
+        "204":
+          description: Transaction deleted successfully
+        "400":
+          description: Invalid envelope or transaction ID
+        "404":
+          description: Transaction not found
+      x-swagger-router-controller: Transactions
+components:
+  schemas:
+    Envelope:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Groceries
+        budget:
+          type: number
+          example: 500
+        spent:
+          type: number
+          example: 120
+        created_at:
+          type: string
+          format: date-time
+          example: 2025-08-26T12:00:00Z
+      example:
+        spent: 120
+        name: Groceries
+        created_at: 2025-08-26T12:00:00Z
+        id: 1
+        budget: 500
+    EnvelopeInput:
+      required:
+      - budget
+      - name
+      - spent
+      type: object
+      properties:
+        name:
+          type: string
+          example: Groceries
+        budget:
+          minimum: 0
+          type: number
+          example: 500
+        spent:
+          minimum: 0
+          type: number
+          example: 0
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        amount:
+          type: number
+          example: 50
+        date:
+          type: string
+          format: date-time
+          example: 2025-08-26T13:45:00Z
+        for_id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Milk and Bread
+        envelope_name:
+          type: string
+          example: Groceries
+      example:
+        date: 2025-08-26T13:45:00Z
+        amount: 50
+        envelope_name: Groceries
+        name: Milk and Bread
+        id: 1
+        for_id: 1
+    TransactionInput:
+      required:
+      - amount
+      - name
+      type: object
+      properties:
+        name:
+          type: string
+          example: Milk and Bread
+        amount:
+          minimum: 0
+          type: number
+          example: 50
+        for_id:
+          minimum: 0
+          type: number
+          example: 1
+  parameters:
+    EnvelopeId:
+      name: id
+      in: path
+      description: ID of the envelope
+      required: true
+      style: simple
+      explode: false
+      schema:
+        type: integer
+        example: 1
+    TransactionId:
+      name: transaction_id
+      in: path
+      description: ID of the transaction
+      required: true
+      style: simple
+      explode: false
+      schema:
+        type: integer
+        example: 1

@@ -28,6 +28,7 @@ export default function CreateEnvelopePopUp({cards, setCards, displayCreate, set
             method: "POST",
             body: JSON.stringify(inputs)
         }).then((res: any) => {
+            console.log(res)
             updateCardsState(res.new_envelope.id);
         })
 
